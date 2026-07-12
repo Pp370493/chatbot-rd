@@ -1,0 +1,25 @@
+# Backend / Python Virtual Environment & Cache
+backend/.venv/
+__pycache__/
+*.pyc
+backend/chatbot_logs.db
+backend/data/vat_laws_raw.txt.bak
+
+# Frontend / Node.js Modules & Next.js Build Output
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.vercel/
+frontend/.env.local
+frontend/.env.production
+frontend/.env.development
+frontend/.env.staging
+
+# OS / Editors metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+*.tmp

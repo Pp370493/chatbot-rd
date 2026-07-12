@@ -1,0 +1,9 @@
+fastapi>=0.100.0
+uvicorn>=0.20.0
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-community
+pydantic>=2.0.0
+pydantic-settings
+chromadb
+sentence-transformers
