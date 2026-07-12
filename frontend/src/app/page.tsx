@@ -54,6 +54,457 @@ interface AdminStats {
   top_out_of_scope: StatItem[];
 }
 
+// ============================================================================
+// CLIENT-SIDE MOCK DATABASE & RAG SIMULATION ENGINE (FOR STANDALONE DEPLOYMENT)
+// ============================================================================
+
+const LAWS_DATABASE = [
+  {
+    id: "sec_81_1",
+    title: "ประมวลรัษฎากร มาตรา 81/1 (หน้าที่จดทะเบียนและการยกเว้น)",
+    content: "ผู้ประกอบการซึ่งประกอบกิจการขายสินค้าหรือให้บริการในทางธุรกิจที่มีรายรับไม่เกิน 1.8 ล้านบาทต่อปี ได้รับยกเว้นไม่ต้องเสียภาษีมูลค่าเพิ่ม แต่สามารถแจ้งความประสงค์ขอจดทะเบียนภาษีมูลค่าเพิ่มได้ตามที่อธิบดีกำหนด โดยมีสิทธิและหน้าที่เสมือนผู้จดทะเบียนทั่วไป",
+    keywords: ["1.8 ล้าน", "ยกเว้น", "รายรับ", "รายได้", "สมัครใจ", "บังคับ", "หน้าที่", "มาตรา 81/1"]
+  },
+  {
+    id: "sec_85",
+    title: "ประมวลรัษฎากร มาตรา 85 (กำหนดเวลายื่นคำขอ)",
+    content: "ผู้ประกอบการที่มีหน้าที่เสียภาษีมูลค่าเพิ่ม ต้องยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มก่อนวันเริ่มประกอบกิจการ หรือภายใน 30 วันนับแต่วันที่รายรับจากการขายสินค้าหรือให้บริการเกินเกณฑ์ 1.8 ล้านบาทต่อปี",
+    keywords: ["กำหนดเวลา", "30 วัน", "ก่อนเริ่ม", "รายรับเกิน", "ล่าช้า", "เกินกำหนด", "มาตรา 85"]
+  },
+  {
+    id: "sec_85_3",
+    title: "ประมวลรัษฎากร มาตรา 85/3 (สถานที่และวิธีจดทะเบียน)",
+    content: "การยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่ม (แบบ ภ.พ.01) ให้ยื่น ณ สถานที่จดทะเบียนตามที่อธิบดีกำหนด หรือยื่นผ่านระบบอินเทอร์เน็ตทางเว็บไซต์ของกรมสรรพากร (www.rd.go.th)",
+    keywords: ["ภ.พ.01", "สถานที่", "อินเทอร์เน็ต", "rd.go.th", "ยื่นที่ไหน", "ช่องทาง", "แบบฟอร์ม", "มาตรา 85/3"]
+  },
+  {
+    id: "sec_89_1",
+    title: "ประมวลรัษฎากร มาตรา 89(1) (เบี้ยปรับกรณียื่นล่าช้า)",
+    content: "ผู้ประกอบการที่มีหน้าที่จดทะเบียนภาษีมูลค่าเพิ่ม แต่ประกอบกิจการโดยไม่ได้จดทะเบียนภายในกำหนดเวลา ต้องเสียเบี้ยปรับอีก 2 เท่าของเงินภาษีที่ต้องเสียในแต่ละเดือนภาษีตลอดระยะเวลาที่ไม่จดทะเบียน",
+    keywords: ["เบี้ยปรับ", "ค่าปรับ", "ไม่ได้จด", "สองเท่า", "เงินเพิ่ม", "มาตรา 89"]
+  },
+  {
+    id: "sec_90_2",
+    title: "ประมวลรัษฎากร มาตรา 90/2 (โทษทางอาญาสำหรับผู้ไม่จดทะเบียน)",
+    content: "ผู้ประกอบการซึ่งมีหน้าที่เสียภาษีมูลค่าเพิ่ม แต่ตั้งใจละเลยไม่ยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มภายในกำหนดเวลา ต้องระวางโทษจำคุกไม่เกิน 1 เดือน หรือปรับไม่เกิน 2,000 บาท หรือทั้งจำทั้งปรับ",
+    keywords: ["โทษทางอาญา", "จำคุก", "ปรับเงิน", "ละเลย", "2,000 บาท", "มาตรา 90/2"]
+  },
+  {
+    id: "doc_require",
+    title: "ประกาศอธิบดีกรมสรรพากร (เอกสารหลักฐานประกอบการจดทะเบียน)",
+    content: "เอกสารที่ต้องเตรียมสำหรับยื่นจดทะเบียน ภ.พ.01 ได้แก่ 1. แบบ ภ.พ.01 จำนวน 3 ฉบับ 2. บัตรประชาชนผู้ประกอบการ/กรรมการ 3. สำเนาทะเบียนบ้านของสถานประกอบการ 4. แผนที่และภาพถ่ายสถานประกอบการที่มีป้ายชื่อชัดเจน 5. หนังสือยินยอมให้ใช้สถานที่หรือสัญญาเช่าในกรณีที่ไม่ได้เป็นเจ้าของกรรมสิทธิ์เอง",
+    keywords: ["เอกสาร", "หลักฐาน", "เตรียมอะไรบ้าง", "รูปถ่าย", "ทะเบียนบ้าน", "สัญญาเช่า", "ป้ายชื่อ", "ยินยอมให้ใช้สถานที่"]
+  },
+  {
+    id: "rule_cancellation",
+    title: "แนวทางปฏิบัติการยกเลิกใบจดทะเบียน VAT สมัครใจ",
+    content: "ผู้ประกอบการที่ขอจดทะเบียนภาษีมูลค่าเพิ่มโดยสมัครใจ (มีรายได้ต่ำกว่า 1.8 ล้านบาทต่อปี) จะยื่นคำขอยกเลิกการจดทะเบียนได้ก็ต่อเมื่อได้จดทะเบียนภาษีมูลค่าเพิ่มมาแล้วไม่น้อยกว่า 2 ปีภาษี เว้นแต่เป็นกรณีเลิกประกอบกิจการหรือโอนกิจการทั้งหมด",
+    keywords: ["ยกเลิก", "ออกจากระบบ", "ออก vat", "ยกเลิกจด", "สมัครใจ", "2 ปีภาษี", "ถอนตัว"]
+  },
+  {
+    id: "rule_duplicate",
+    title: "ระเบียบกรมสรรพากรเรื่องการจดทะเบียนสถานประกอบการซ้ำซ้อน",
+    content: "สถานประกอบการแห่งหนึ่งสามารถจดทะเบียนเป็นที่ตั้งหลักของบุคคลเดียวได้เท่านั้น ห้ามใช้สถานที่เดียวกันจดทะเบียนซ้ำซ้อนในนามบุคคลธรรมดาเดียวกัน หรือนิติบุคคลเดียวกันโดยไม่มีการแบ่งแยกสัดส่วนพื้นที่อย่างเด่นชัดทางกายภาพ",
+    keywords: ["ซ้ำซ้อน", "สถานที่เดิม", "บ้านเลขที่เดียวกัน", "จดซ้ำ", "สองคน", "แบ่งแยก"]
+  }
+];
+
+const SEED_LOGS = [
+  {
+    id: 1,
+    session_id: "sess_001",
+    original_query: "อยากจดทะเบียนภาษีมูลค่าเพิ่ม ต้องใช้เอกสารอะไรบ้างครับ",
+    rewritten_query: "เอกสารที่ใช้จดทะเบียนภาษีมูลค่าเพิ่ม VAT",
+    response: "**สรุปขั้นตอนและเอกสารสำหรับผู้ประกอบการ:**\nในการยื่นจดทะเบียนภาษีมูลค่าเพิ่ม (แบบ ภ.พ.01) เจ้าหน้าที่ต้องแนะนำให้ผู้ประกอบการจัดเตรียมเอกสารหลักฐานดังนี้:\n1. **แบบคำขอจดทะเบียน ภ.พ.01** จำนวน 3 ฉบับ (ต้องกรอกข้อมูลให้ครบถ้วนพร้อมลงลายมือชื่อ)\n2. **เอกสารแสดงตัวตน:**\n   - กรณีบุคคลธรรมดา: สำเนาบัตรประชาชน และสำเนาทะเบียนบ้านของผู้ประกอบการ\n   - กรณีนิติบุคคล: หนังสือรับรองการจดทะเบียนหุ้นส่วนบริษัท (ไม่เกิน 6 เดือน) พร้อมสำเนาบัตรประชาชนและทะเบียนบ้านของกรรมการผู้มีอำนาจ\n3. **เอกสารที่ตั้งสถานประกอบการ:**\n   - สำเนาทะเบียนบ้านของอาคารที่ตั้งสถานประกอบการ\n   - สัญญาเช่าอาคาร หรือหนังสือยินยอมให้ใช้เป็นสถานที่ประกอบกิจการ (กรณีไม่ได้เป็นเจ้าของ)\n   - แผนที่แสดงที่ตั้งโดยสังเขป\n   - ภาพถ่ายของสถานประกอบการที่แสดงเห็นเลขที่บ้านและป้ายชื่อร้าน/บริษัทชัดเจน\n\n💡 *คำแนะนำเพิ่มเติมสำหรับเจ้าหน้าที่:* ให้ตรวจสอบภาพถ่ายสถานที่ว่ามีสภาพพร้อมประกอบกิจการจริงหรือไม่ เพื่อป้องกันการจดทะเบียนในลักษณะนอมินี\n\n---\n🔎 **เอกสารกฎหมายอ้างอิงที่สืบค้นได้จาก Vector Store:**\n- ประกาศอธิบดีกรมสรรพากร (เอกสารหลักฐานประกอบการจดทะเบียน): เอกสารที่ต้องเตรียมสำหรับยื่นจดทะเบียน ภ.พ.01 ได้แก่ 1. แบบ ภ.พ.01 จำนวน 3 ฉบับ 2. บัตรประชาชนผู้ประกอบการ/กรรมการ 3. สำเนาทะเบียนบ้านของสถานประกอบการ 4. แผนที่และภาพถ่ายสถานประกอบการที่มีป้ายชื่อชัดเจน 5. หนังสือยินยอมให้ใช้สถานที่หรือสัญญาเช่าในกรณีที่ไม่ได้เป็นเจ้าของกรรมสิทธิ์เอง",
+    raw_laws: JSON.stringify([
+      {
+        title: "ประกาศอธิบดีกรมสรรพากร (เอกสารหลักฐานประกอบการจดทะเบียน)",
+        content: "เอกสารที่ต้องเตรียมสำหรับยื่นจดทะเบียน ภ.พ.01 ได้แก่ 1. แบบ ภ.พ.01 จำนวน 3 ฉบับ 2. บัตรประชาชนผู้ประกอบการ/กรรมการ 3. สำเนาทะเบียนบ้านของสถานประกอบการ 4. แผนที่และภาพถ่ายสถานประกอบการที่มีป้ายชื่อชัดเจน 5. หนังสือยินยอมให้ใช้สถานที่หรือสัญญาเช่าในกรณีที่ไม่ได้เป็นเจ้าของกรรมสิทธิ์เอง",
+        id: "doc_require"
+      }
+    ]),
+    is_out_of_scope: 0,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:11:00.000Z"
+  },
+  {
+    id: 2,
+    session_id: "sess_001",
+    original_query: "ยื่นจดทะเบียนได้ที่ช่องทางไหนบ้าง",
+    rewritten_query: "ช่องทางและสถานที่ในการยื่นจดทะเบียนภาษีมูลค่าเพิ่ม VAT",
+    response: "**สถานที่และช่องทางการยื่นจดทะเบียนภาษีมูลค่าเพิ่ม:**\nผู้ประกอบการสามารถเลือกยื่นแบบ ภ.พ.01 ได้ 2 ช่องทางดังนี้:\n1. **ช่องทางออนไลน์ (แนะนำ):** ยื่นผ่านระบบ e-Registration บนเว็บไซต์ของกรมสรรพากร (www.rd.go.th) ได้ตลอด 24 ชั่วโมง โดยจะได้รับการอนุมัติและออกใบทะเบียนภาษีมูลค่าเพิ่ม (ภ.พ.20) รวดเร็วกว่า\n2. **ยื่น ณ สำนักงานสรรพากรพื้นที่:** ยื่นด้วยกระดาษ ณ สำนักงานสรรพากรพื้นที่สาขา ที่สถานประกอบการตั้งอยู่ (กรณีมีสถานประกอบการหลายแห่ง ให้ยื่น ณ สรรพากรพื้นที่ที่สำนักงานใหญ่ตั้งอยู่)\n\n💡 *สิทธิ์สำหรับผู้ประกอบการ:* การยื่นออนไลน์เปิดสิทธิ์ให้ทำรายการได้ทันทีโดยไม่ต้องส่งเอกสารทางกระดาษ เว้นแต่เจ้าหน้าที่จะขอสืบค้นเพิ่มเติม\n\n---\n🔎 **เอกสารกฎหมายอ้างอิงที่สืบค้นได้จาก Vector Store:**\n- ประมวลรัษฎากร มาตรา 85/3 (สถานที่และวิธีจดทะเบียน): การยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่ม (แบบ ภ.พ.01) ให้ยื่น ณ สถานที่จดทะเบียนตามที่อธิบดีกำหนด หรือยื่นผ่านระบบอินเทอร์เน็ตทางเว็บไซต์ของกรมสรรพากร (www.rd.go.th)",
+    raw_laws: JSON.stringify([
+      {
+        title: "ประมวลรัษฎากร มาตรา 85/3 (สถานที่และวิธีจดทะเบียน)",
+        content: "การยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่ม (แบบ ภ.พ.01) ให้ยื่น ณ สถานที่จดทะเบียนตามที่อธิบดีกำหนด หรือยื่นผ่านระบบอินเทอร์เน็ตทางเว็บไซต์ของกรมสรรพากร (www.rd.go.th)",
+        id: "sec_85_3"
+      }
+    ]),
+    is_out_of_scope: 0,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:15:00.000Z"
+  },
+  {
+    id: 3,
+    session_id: "sess_002",
+    original_query: "บริษัทรายได้เท่าไหร่ถึงต้องจด VAT ครับ",
+    rewritten_query: "เกณฑ์รายได้บังคับจดทะเบียนภาษีมูลค่าเพิ่ม VAT",
+    response: "**เกณฑ์การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration Criteria):**\n1. **กรณีภาคบังคับ (Mandatory):** ผู้ประกอบการที่มีรายรับจากการขายสินค้าหรือให้บริการเกินกว่า **1.8 ล้านบาทต่อปี** มีหน้าที่ต้องจดทะเบียนภาษีมูลค่าเพิ่มภายใน 30 วันนับแต่วันที่รายรับเกินเกณฑ์ดังกล่าว\n2. **กรณีสมัครใจ (Voluntary):** ผู้ประกอบการที่มีรายรับไม่ถึง 1.8 ล้านบาทต่อปี หรือประกอบกิจการที่ได้รับยกเว้น VAT ตามกฎหมาย (เช่น ขายพืชผลทางการเกษตร, หนังสือ) มีสิทธิขอจดทะเบียนเข้าสู่ระบบ VAT ได้โดยสมัครใจ\n\n💡 *หมายเหตุ:* กฎหมายไม่ได้บังคับจดทะเบียนสำหรับผู้ที่มีรายได้ไม่ถึง 1.8 ล้านบาท แต่หากต้องการสิทธิในการเคลมภาษีซื้อ สามารถขอยื่นแบบ ภ.พ.01.1 เพื่อเข้าสู่ระบบได้\n\n---\n🔎 **เอกสารกฎหมายอ้างอิงที่สืบค้นได้จาก Vector Store:**\n- ประมวลรัษฎากร มาตรา 81/1 (หน้าที่จดทะเบียนและการยกเว้น): ผู้ประกอบการซึ่งประกอบกิจการขายสินค้าหรือให้บริการในทางธุรกิจที่มีรายรับไม่เกิน 1.8 ล้านบาทต่อปี ได้รับยกเว้นไม่ต้องเสียภาษีมูลค่าเพิ่ม แต่สามารถแจ้งความประสงค์ขอจดทะเบียนภาษีมูลค่าเพิ่มได้ตามที่อธิบดีกำหนด โดยมีสิทธิและหน้าที่เสมือนผู้จดทะเบียนทั่วไป",
+    raw_laws: JSON.stringify([
+      {
+        title: "ประมวลรัษฎากร มาตรา 81/1 (หน้าที่จดทะเบียนและการยกเว้น)",
+        content: "ผู้ประกอบการซึ่งประกอบกิจการขายสินค้าหรือให้บริการในทางธุรกิจที่มีรายรับไม่เกิน 1.8 ล้านบาทต่อปี ได้รับยกเว้นไม่ต้องเสียภาษีมูลค่าเพิ่ม แต่สามารถแจ้งความประสงค์ขอจดทะเบียนภาษีมูลค่าเพิ่มได้ตามที่อธิบดีกำหนด โดยมีสิทธิและหน้าที่เสมือนผู้จดทะเบียนทั่วไป",
+        id: "sec_81_1"
+      }
+    ]),
+    is_out_of_scope: 0,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:20:00.000Z"
+  },
+  {
+    id: 4,
+    session_id: "sess_003",
+    original_query: "ถ้าจดทะเบียน VAT ล่าช้า จะโดนค่าปรับอย่างไรบ้าง",
+    rewritten_query: "โทษและเบี้ยปรับในการจดทะเบียนภาษีมูลค่าเพิ่มล่าช้า",
+    response: "**กำหนดเวลาและบทลงโทษกรณีจดทะเบียนภาษีมูลค่าเพิ่มล่าช้า:**\nตามประมวลรัษฎากร ผู้มีรายรับเกินเกณฑ์ต้องยื่นคำขอจดทะเบียนภายใน **30 วัน** นับแต่วันที่รายรับเกิน 1.8 ล้านบาท\n**บทลงโทษกรณีเกินกำหนดเวลา:**\n1. **ค่าปรับทางอาญา:** ระวางโทษจำคุกไม่เกิน 1 เดือน หรือปรับไม่เกิน 2,000 บาท หรือทั้งจำทั้งปรับ (ตามมาตรา 90/2)\n2. **เบี้ยปรับ:** ต้องเสียเบี้ยปรับ 2 เท่าของเงินภาษีที่ต้องเสียในแต่ละเดือนภาษี นับตั้งแต่วันที่ต้องยื่นจดทะเบียนจนถึงวันที่จดทะเบียนสำเร็จ (ตามมาตรา 89(1))\n3. **เงินเพิ่ม:** ดอกเบี้ยปรับร้อยละ 1.5 ต่อเดือน ของเงินภาษีที่ต้องชำระ (เศษของเดือนคิดเป็น 1 เดือน)\n\n💡 *คำแนะนำเจ้าหน้าที่:* แนะนำให้ผู้ประกอบการรีบยื่นจดทะเบียนทันทีที่รายได้แตะเกณฑ์ เพื่อลดหย่อนภาระเบี้ยปรับย้อนหลัง\n\n---\n🔎 **เอกสารกฎหมายอ้างอิงที่สืบค้นได้จาก Vector Store:**\n- ประมวลรัษฎากร มาตรา 89(1) (เบี้ยปรับกรณียื่นล่าช้า): ผู้ประกอบการที่มีหน้าที่จดทะเบียนภาษีมูลค่าเพิ่ม แต่ประกอบกิจการโดยไม่ได้จดทะเบียนภายในกำหนดเวลา ต้องเสียเบี้ยปรับอีก 2 เท่าของเงินภาษีที่ต้องเสียในแต่ละเดือนภาษีตลอดระยะเวลาที่ไม่จดทะเบียน\n- ประมวลรัษฎากร มาตรา 90/2 (โทษทางอาญาสำหรับผู้ไม่จดทะเบียน): ผู้ประกอบการซึ่งมีหน้าที่เสียภาษีมูลค่าเพิ่ม แต่ตั้งใจละเลยไม่ยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มภายในกำหนดเวลา ต้องระวางโทษจำคุกไม่เกิน 1 เดือน หรือปรับไม่เกิน 2,000 บาท หรือทั้งจำทั้งปรับ",
+    raw_laws: JSON.stringify([
+      {
+        title: "ประมวลรัษฎากร มาตรา 89(1) (เบี้ยปรับกรณียื่นล่าช้า)",
+        content: "ผู้ประกอบการที่มีหน้าที่จดทะเบียนภาษีมูลค่าเพิ่ม แต่ประกอบกิจการโดยไม่ได้จดทะเบียนภายในกำหนดเวลา ต้องเสียเบี้ยปรับอีก 2 เท่าของเงินภาษีที่ต้องเสียในแต่ละเดือนภาษีตลอดระยะเวลาที่ไม่จดทะเบียน",
+        id: "sec_89_1"
+      },
+      {
+        title: "ประมวลรัษฎากร มาตรา 90/2 (โทษทางอาญาสำหรับผู้ไม่จดทะเบียน)",
+        content: "ผู้ประกอบการซึ่งมีหน้าที่เสียภาษีมูลค่าเพิ่ม แต่ตั้งใจละเลยไม่ยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มภายในกำหนดเวลา ต้องระวางโทษจำคุกไม่เกิน 1 เดือน หรือปรับไม่เกิน 2,000 บาท หรือทั้งจำทั้งปรับ",
+        id: "sec_90_2"
+      }
+    ]),
+    is_out_of_scope: 0,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:22:00.000Z"
+  },
+  {
+    id: 5,
+    session_id: "sess_003",
+    original_query: "แล้วถ้ารายได้ 1.2 ล้าน แต่อยากจด VAT ได้ไหม",
+    rewritten_query: "รายได้ไม่เกิน 1.8 ล้านสามารถขอจดทะเบียนภาษีมูลค่าเพิ่มได้หรือไม่",
+    response: "⚠️ **ตรวจพบข้อขัดแย้งของกฎระเบียบ (ประเด็น: รายได้ไม่ถึงเกณฑ์แต่ขอจดทะเบียน)**\nตามประมวลรัษฎากร มาตรา 81/1 ผู้ประกอบการรายรับไม่ถึง 1.8 ล้านบาท/ปี ได้รับยกเว้นภาษีมูลค่าเพิ่ม แต่หากแจ้งความประสงค์ขอจดทะเบียนโดยสมัครใจ จะเกิดภาระภาษีหน้าที่ยื่นแบบ ภ.พ.30 ทุกเดือน แม้ไม่มีรายได้เลย และมีข้อผูกมัดทางปฏิบัติที่ห้ามขอยกเลิกจนกว่าจะจดทะเบียนมาแล้วไม่น้อยกว่า 2 ปีภาษี\n\n**เกณฑ์การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration Criteria):**\n1. **กรณีภาคบังคับ (Mandatory):** ผู้ประกอบการที่มีรายรับจากการขายสินค้าหรือให้บริการเกินกว่า **1.8 ล้านบาทต่อปี** มีหน้าที่ต้องจดทะเบียนภาษีมูลค่าเพิ่มภายใน 30 วันนับแต่วันที่รายรับเกินเกณฑ์ดังกล่าว\n2. **กรณีสมัครใจ (Voluntary):** ผู้ประกอบการที่มีรายรับไม่ถึง 1.8 ล้านบาทต่อปี หรือประกอบกิจการที่ได้รับยกเว้น VAT ตามกฎหมาย (เช่น ขายพืชผลทางการเกษตร, หนังสือ) มีสิทธิขอจดทะเบียนเข้าสู่ระบบ VAT ได้โดยสมัครใจ\n\n💡 *หมายเหตุ:* กฎหมายไม่ได้บังคับจดทะเบียนสำหรับผู้ที่มีรายได้ไม่ถึง 1.8 ล้านบาท แต่หากต้องการสิทธิในการเคลมภาษีซื้อ สามารถขอยื่นแบบ ภ.พ.01.1 เพื่อเข้าสู่ระบบได้\n\n---\n🔎 **เอกสารกฎหมายอ้างอิงที่สืบค้นได้จาก Vector Store:**\n- ประมวลรัษฎากร มาตรา 81/1 (หน้าที่จดทะเบียนและการยกเว้น): ผู้ประกอบการซึ่งประกอบกิจการขายสินค้าหรือให้บริการในทางธุรกิจที่มีรายรับไม่เกิน 1.8 ล้านบาทต่อปี ได้รับยกเว้นไม่ต้องเสียภาษีมูลค่าเพิ่ม แต่สามารถแจ้งความประสงค์ขอจดทะเบียนภาษีมูลค่าเพิ่มได้ตามที่อธิบดีกำหนด โดยมีสิทธิและหน้าที่เสมือนผู้จดทะเบียนทั่วไป",
+    raw_laws: JSON.stringify([
+      {
+        title: "ประมวลรัษฎากร มาตรา 81/1 (หน้าที่จดทะเบียนและการยกเว้น)",
+        content: "ผู้ประกอบการซึ่งประกอบกิจการขายสินค้าหรือให้บริการในทางธุรกิจที่มีรายรับไม่เกิน 1.8 ล้านบาทต่อปี ได้รับยกเว้นไม่ต้องเสียภาษีมูลค่าเพิ่ม แต่สามารถแจ้งความประสงค์ขอจดทะเบียนภาษีมูลค่าเพิ่มได้ตามที่อธิบดีกำหนด โดยมีสิทธิและหน้าที่เสมือนผู้จดทะเบียนทั่วไป",
+        id: "sec_81_1"
+      }
+    ]),
+    is_out_of_scope: 0,
+    detected_conflict: 1,
+    timestamp: "2026-07-12T07:25:00.000Z"
+  },
+  {
+    id: 6,
+    session_id: "sess_004",
+    original_query: "วิธียื่นภาษีเงินได้บุคคลธรรมดา ภ.ง.ด.90 ทำยังไงครับ",
+    rewritten_query: "วิธียื่นภาษีเงินได้บุคคลธรรมดา ภ.ง.ด.90",
+    response: "ขออภัยครับ ระบบนี้ให้บริการข้อมูลและตอบคำถามเฉพาะเรื่อง 'การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration)' เท่านั้น หากท่านต้องการสอบถามข้อมูลเกี่ยวกับภาษีเงินได้บุคคลธรรมดา (ภ.ง.ด.90/91) กรุณาติดต่อสายด่วนสรรพากร โทร. 1161 หรือเยี่ยมชมเว็บไซต์กรมสรรพากร",
+    raw_laws: "[]",
+    is_out_of_scope: 1,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:30:00.000Z"
+  },
+  {
+    id: 7,
+    session_id: "sess_005",
+    original_query: "ขั้นตอนขอคืนภาษีท่องเที่ยวประชารัฐทำอย่างไร",
+    rewritten_query: "ขั้นตอนการขอคืนภาษีท่องเที่ยวประชารัฐ",
+    response: "ขออภัยครับ ระบบนี้ให้บริการข้อมูลและตอบคำถามเฉพาะเรื่อง 'การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration)' เท่านั้น หากท่านต้องการสอบถามเรื่องการขอคืนภาษีการท่องเที่ยว กรุณาศึกษาข้อมูลเพิ่มเติมที่เว็บไซต์ของกรมสรรพากรโดยตรงครับ",
+    raw_laws: "[]",
+    is_out_of_scope: 1,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:32:00.000Z"
+  },
+  {
+    id: 8,
+    session_id: "sess_006",
+    original_query: "ขอทราบวิธีคำนวณภาษีมรดกหน่อยค่ะ",
+    rewritten_query: "วิธีคำนวณภาษีมรดก",
+    response: "ขออภัยครับ ระบบนี้ให้บริการข้อมูลและตอบคำถามเฉพาะเรื่อง 'การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration)' เท่านั้น สำหรับข้อมูลเกี่ยวกับภาษีมรดก สามารถสืบค้นได้ที่หัวข้อภาษีมรดกในเว็บไซต์กรมสรรพากรครับ",
+    raw_laws: "[]",
+    is_out_of_scope: 1,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:35:00.000Z"
+  },
+  {
+    id: 9,
+    session_id: "sess_007",
+    original_query: "กรมสรรพากรสมัครงานยังไง เปิดสอบช่วงไหน",
+    rewritten_query: "สมัครงานกรมสรรพากร เปิดสอบช่วงไหน",
+    response: "ขออภัยครับ ระบบนี้ให้บริการข้อมูลและตอบคำถามเฉพาะเรื่อง 'การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration)' เท่านั้น หากท่านสนใจร่วมงานกับกรมสรรพากร สามารถติดตามข่าวสารการรับสมัครงานและสอบแข่งขันได้ที่กองบริหารทรัพยากรบุคคล บนเว็บไซต์หลักของกรมสรรพากรครับ",
+    raw_laws: "[]",
+    is_out_of_scope: 1,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:40:00.000Z"
+  },
+  {
+    id: 10,
+    session_id: "sess_008",
+    original_query: "จดทะเบียนบริษัทที่กรมพัฒนาธุรกิจการค้ากระทรวงพาณิชย์ทำอย่างไร",
+    rewritten_query: "จดทะเบียนบริษัท กรมพัฒนาธุรกิจการค้า",
+    response: "ขออภัยครับ ระบบนี้ให้บริการข้อมูลและตอบคำถามเฉพาะเรื่อง 'การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration)' ของกรมสรรพากรเท่านั้น หากท่านต้องการทราบขั้นตอนการจดทะเบียนจัดตั้งบริษัทจำกัด กรุณาติดต่อกรมพัฒนาธุรกิจการค้า (DBD) กระทรวงพาณิชย์ หรือสายด่วน 1570",
+    raw_laws: "[]",
+    is_out_of_scope: 1,
+    detected_conflict: 0,
+    timestamp: "2026-07-12T07:45:00.000Z"
+  }
+];
+
+function calculateMockStats(logs: any[]): AdminStats {
+  const total_sessions = new Set(logs.map(l => l.session_id)).size;
+  const total_interactions = logs.length;
+  const total_out_of_scope = logs.filter(l => l.is_out_of_scope === 1).length;
+  const total_conflicts = logs.filter(l => l.detected_conflict === 1).length;
+
+  const faqCounts: { [key: string]: number } = {};
+  logs.filter(l => l.is_out_of_scope === 0).forEach(l => {
+    faqCounts[l.original_query] = (faqCounts[l.original_query] || 0) + 1;
+  });
+  const top_faq = Object.keys(faqCounts).map(query => ({
+    original_query: query,
+    count: faqCounts[query]
+  })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+  const oosCounts: { [key: string]: number } = {};
+  logs.filter(l => l.is_out_of_scope === 1).forEach(l => {
+    oosCounts[l.original_query] = (oosCounts[l.original_query] || 0) + 1;
+  });
+  const top_out_of_scope = Object.keys(oosCounts).map(query => ({
+    original_query: query,
+    count: oosCounts[query]
+  })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+  return {
+    total_sessions,
+    total_interactions,
+    total_out_of_scope,
+    total_conflicts,
+    top_faq,
+    top_out_of_scope
+  };
+}
+
+const IN_SCOPE_KEYWORDS = [
+  "vat", "ภาษีมูลค่าเพิ่ม", "จดทะเบียน", "จดvat", "ภ.พ.01", "ภพ01", "1.8 ล้าน", "1,800,000",
+  "รายรับ", "รายได้", "สมัครใจ", "บังคับ", "เอกสาร", "หลักฐาน", "ช่องทาง", "ยื่น", "อินเทอร์เน็ต",
+  "เว็บไซต์", "ล่าช้า", "ปรับ", "โทษ", "อาญา", "ซ้ำซ้อน", "ยกเลิก", "พื้นที่สาขา", "กรมสรรพากร"
+];
+
+const OUT_OF_SCOPE_PATTERNS = [
+  "ภ.ง.ด", "ภงด", "บุคคลธรรมดา", "ภาษีเงินได้", "ภาษีมรดก", "ท่องเที่ยวประชารัฐ",
+  "สมัครงาน", "รับสมัคร", "สอบสวน", "น้ำมัน", "ภาษีสรรพสามิต", "จดทะเบียนบริษัท", "กรมพัฒนาธุรกิจ"
+];
+
+function checkMockOutOfScope(query: string): boolean {
+  const normalized = query.toLowerCase();
+  if (IN_SCOPE_KEYWORDS.some(kw => normalized.includes(kw))) {
+    return false;
+  }
+  if (OUT_OF_SCOPE_PATTERNS.some(p => normalized.includes(p))) {
+    return true;
+  }
+  if (normalized.trim().length < 5) {
+    return false;
+  }
+  return true;
+}
+
+function rewriteMockQuery(query: string, history: { role: string, content: string }[]): string {
+  if (!history || history.length === 0) return query;
+
+  const prevUserQueries = history.filter(h => h.role === "user").map(h => h.content);
+  if (prevUserQueries.length === 0) return query;
+
+  const lastContext = prevUserQueries[prevUserQueries.length - 1].toLowerCase();
+
+  const documentsTriggers = ["เอกสาร", "หลักฐาน", "เตรียมอะไร", "ใช้อะไร", "ใช้ตัวไหน"];
+  const channelsTriggers = ["ยื่นที่ไหน", "ช่องทาง", "ยื่นยังไง", "จดที่ไหน", "จดช่องทางไหน", "ยื่นช่องทางไหน"];
+  const timelineTriggers = ["กี่วัน", "เวลา", "ล่าช้า", "ปรับ", "เมื่อไหร่", "ตอนไหน", "กำหนดเวลา"];
+  const cancelTriggers = ["ยกเลิก", "ลาออก", "ยกเลิกจด", "ถอนตัว"];
+
+  let contextVat = "จดทะเบียนภาษีมูลค่าเพิ่ม (VAT)";
+  if (lastContext.includes("ยกเลิก")) {
+    contextVat = "ยกเลิกการจดทะเบียนภาษีมูลค่าเพิ่ม (VAT)";
+  }
+
+  const queryLower = query.toLowerCase();
+  if (documentsTriggers.some(t => queryLower.includes(t)) && !queryLower.includes("จดทะเบียน")) {
+    return `เอกสารหลักฐานที่ต้องเตรียมในการ${contextVat}`;
+  } else if (channelsTriggers.some(t => queryLower.includes(t)) && !queryLower.includes("จดทะเบียน")) {
+    return `ช่องทางและสถานที่ในการ${contextVat}`;
+  } else if (timelineTriggers.some(t => queryLower.includes(t)) && !queryLower.includes("จดทะเบียน")) {
+    return `กำหนดเวลาและโทษกรณีล่าช้าในการ${contextVat}`;
+  } else if (cancelTriggers.some(t => queryLower.includes(t)) && !queryLower.includes("จดทะเบียน")) {
+    return `การขออนุมัติยกเลิกจดทะเบียนภาษีมูลค่าเพิ่ม (VAT)`;
+  }
+
+  return query;
+}
+
+function detectMockConflict(query: string): string | null {
+  const normalized = query.toLowerCase();
+
+  if ((normalized.includes("ไม่ถึง") || normalized.includes("ไม่เกิน") || normalized.includes("1.2") || normalized.includes("น้อยกว่า")) &&
+      (normalized.includes("สมัครใจ") || normalized.includes("จดได้ไหม") || normalized.includes("จด vat"))) {
+    return (
+      "⚠️ **ตรวจพบข้อขัดแย้งของกฎระเบียบ (ประเด็น: รายได้ไม่ถึงเกณฑ์แต่ขอจดทะเบียน)**\n" +
+      "ตามประมวลรัษฎากร มาตรา 81/1 ผู้ประกอบการรายรับไม่ถึง 1.8 ล้านบาท/ปี ได้รับยกเว้นภาษีมูลค่าเพิ่ม " +
+      "แต่หากแจ้งความประสงค์ขอจดทะเบียนโดยสมัครใจ จะเกิดภาระภาษีหน้าที่ยื่นแบบ ภ.พ.30 ทุกเดือน แม้ไม่มีรายได้เลย " +
+      "และมีข้อผูกมัดทางปฏิบัติที่ห้ามขอยกเลิกจนกว่าจะจดทะเบียนมาแล้วไม่น้อยกว่า 2 ปีภาษี"
+    );
+  }
+
+  if (normalized.includes("ยกเลิก") && (normalized.includes("สมัครใจ") || normalized.includes("ไม่ถึง") || normalized.includes("2 ปี"))) {
+    return (
+      "⚠️ **ตรวจพบข้อขัดแย้งของกฎระเบียบ (ประเด็น: เงื่อนไขเวลาการขอยกเลิกจดทะเบียน)**\n" +
+      "ผู้ประกอบการที่จดทะเบียนโดยสมัครใจ (มาตรา 81/1) ไม่สามารถยื่นขอยกเลิกจดทะเบียนเมื่อใดก็ได้ " +
+      "ระเบียบกรมสรรพากรกำหนดให้ต้องเป็นผู้จดทะเบียนแล้วไม่น้อยกว่า 2 ปีภาษีจึงจะยื่น ภ.พ.08 ขอยกเลิกได้ " +
+      "ข้อยกเว้นเพียงอย่างเดียวคือ เลิกประกอบกิจการหรือโอนกิจการทั้งหมด"
+    );
+  }
+
+  if (normalized.includes("ซ้ำซ้อน") || normalized.includes("สถานที่เดียวกัน") || normalized.includes("บ้านเลขที่เดียวกัน") || normalized.includes("จดสองรอบ")) {
+    return (
+      "⚠️ **ตรวจพบข้อขัดแย้งของกฎระเบียบ (ประเด็น: สถานที่ตั้งซ้ำซ้อน)**\n" +
+      "ตามแนวทางปฏิบัติของเจ้าหน้าที่ สรรพากรพื้นที่จะตรวจสอบความทับซ้อนของที่ตั้งสถานประกอบการ " +
+      "หากเป็นการจดทะเบียนซ้ำซ้อนในนามบุคคลเดิม ณ สถานที่ตั้งเดิมจะไม่สามารถทำได้ " +
+      "แต่หากเป็นคนละนิติบุคคลจดทะเบียนในที่เดียวกัน ต้องมีสัญญายินยอมแบ่งแยกส่วนพื้นที่อย่างชัดเจน " +
+      "เพื่อป้องกันข้อหาจัดตั้งโครงสร้างหลบเลี่ยงภาษี"
+    );
+  }
+
+  if (normalized.includes("เกิน 30 วัน") || normalized.includes("จดช้า") || normalized.includes("ไม่ได้จดภายใน")) {
+    return (
+      "⚠️ **ตรวจพบข้อขัดแย้งของกฎระเบียบ (ประเด็น: ยื่นจดทะเบียนล่าช้ากว่ากำหนด)**\n" +
+      "เมื่อรายรับเกิน 1.8 ล้านบาท เกิดหน้าที่ทันทีตามกฎหมายที่จะต้องจดทะเบียนภายใน 30 วัน (มาตรา 85) " +
+      "หากประกอบกิจการต่อโดยไม่ยื่นคำขอจดทะเบียน จะขัดแย้งกับระเบียบการงดเบี้ยปรับ " +
+      "ผู้ประกอบการจะต้องรับโทษปรับอาญา และรับผิดเบี้ยปรับ 2 เท่าของเงินภาษีที่คำนวณย้อนหลังตั้งแต่วันที่พ้นกำหนด 30 วัน"
+    );
+  }
+
+  return null;
+}
+
+function retrieveMockDocs(query: string): any[] {
+  const normalized = query.toLowerCase();
+  const scoredDocs: { score: number, doc: any }[] = [];
+
+  for (const doc of LAWS_DATABASE) {
+    let score = 0;
+    for (const kw of doc.keywords) {
+      if (normalized.includes(kw.toLowerCase())) {
+        score += 3;
+      }
+    }
+
+    if (doc.title.toLowerCase().split(/\s+/).some(term => normalized.includes(term))) {
+      score += 2;
+    }
+
+    for (const word of normalized.split(/\s+/)) {
+      if (word.length > 2 && doc.content.toLowerCase().includes(word)) {
+        score += 1;
+      }
+    }
+
+    if (score > 0) {
+      scoredDocs.push({ score, doc });
+    }
+  }
+
+  scoredDocs.sort((a, b) => b.score - a.score);
+  return scoredDocs.slice(0, 3).map(item => ({
+    id: item.doc.id,
+    title: item.doc.title,
+    content: item.doc.content,
+    keywords: item.doc.keywords
+  }));
+}
+
+function generateMockResponse(query: string, matchedDocs: any[], conflictWarn: string | null): string {
+  const normalized = query.toLowerCase();
+  const contextStr = matchedDocs.map(doc => `- ${doc.title}: ${doc.content}`).join("\n");
+  let response = "";
+
+  if (conflictWarn) {
+    response += `${conflictWarn}\n\n`;
+  }
+
+  if (normalized.includes("เอกสาร") || normalized.includes("หลักฐาน") || normalized.includes("เตรียมอะไร")) {
+    response += (
+      "**สรุปขั้นตอนและเอกสารสำหรับผู้ประกอบการ:**\n" +
+      "ในการยื่นจดทะเบียนภาษีมูลค่าเพิ่ม (แบบ ภ.พ.01) เจ้าหน้าที่ต้องแนะนำให้ผู้ประกอบการจัดเตรียมเอกสารหลักฐานดังนี้:\n" +
+      "1. **แบบคำขอจดทะเบียน ภ.พ.01** จำนวน 3 ฉบับ (ต้องกรอกข้อมูลให้ครบถ้วนพร้อมลงลายมือชื่อ)\n" +
+      "2. **เอกสารแสดงตัวตน:**\n" +
+      "   - กรณีบุคคลธรรมดา: สำเนาบัตรประชาชน และสำเนาทะเบียนบ้านของผู้ประกอบการ\n" +
+      "   - กรณีนิติบุคคล: หนังสือรับรองการจดทะเบียนหุ้นส่วนบริษัท (ไม่เกิน 6 เดือน) พร้อมสำเนาบัตรประชาชนและทะเบียนบ้านของกรรมการผู้มีอำนาจ\n" +
+      "3. **เอกสารที่ตั้งสถานประกอบการ:**\n" +
+      "   - สำเนาทะเบียนบ้านของอาคารที่ตั้งสถานประกอบการ\n" +
+      "   - สัญญาเช่าอาคาร หรือหนังสือยินยอมให้ใช้เป็นสถานที่ประกอบกิจการ (กรณีไม่ได้เป็นเจ้าของ)\n" +
+      "   - แผนที่แสดงที่ตั้งโดยสังเขป\n" +
+      "   - ภาพถ่ายของสถานประกอบการที่แสดงเห็นเลขที่บ้านและป้ายชื่อร้าน/บริษัทชัดเจน\n\n" +
+      "💡 *คำแนะนำเพิ่มเติมสำหรับเจ้าหน้าที่:* ให้ตรวจสอบภาพถ่ายสถานที่ว่ามีสภาพพร้อมประกอบกิจการจริงหรือไม่ เพื่อป้องกันการจดทะเบียนในลักษณะนอมินี"
+    );
+  } else if (normalized.includes("1.8") || normalized.includes("ล้าน") || normalized.includes("เกณฑ์") || normalized.includes("รายได้")) {
+    response += (
+      "**เกณฑ์การจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration Criteria):**\n" +
+      "1. **กรณีภาคบังคับ (Mandatory):** ผู้ประกอบการที่มีรายรับจากการขายสินค้าหรือให้บริการเกินกว่า **1.8 ล้านบาทต่อปี** มีหน้าที่ต้องจดทะเบียนภาษีมูลค่าเพิ่มภายใน 30 วันนับแต่วันที่รายรับเกินเกณฑ์ดังกล่าว\n" +
+      "2. **กรณีสมัครใจ (Voluntary):** ผู้ประกอบการที่มีรายรับไม่ถึง 1.8 ล้านบาทต่อปี หรือประกอบกิจการที่ได้รับยกเว้น VAT ตามกฎหมาย (เช่น ขายพืชผลทางการเกษตร, หนังสือ) มีสิทธิขอจดทะเบียนเข้าสู่ระบบ VAT ได้โดยสมัครใจ\n\n" +
+      "💡 *หมายเหตุ:* กฎหมายไม่ได้บังคับจดทะเบียนสำหรับผู้ที่มีรายได้ไม่ถึง 1.8 ล้านบาท แต่หากต้องการสิทธิในการเคลมภาษีซื้อ สามารถขอยื่นแบบ ภ.พ.01.1 เพื่อเข้าสู่ระบบได้"
+    );
+  } else if (normalized.includes("กี่วัน") || normalized.includes("วัน") || normalized.includes("กำหนดเวลา") || normalized.includes("ล่าช้า") || normalized.includes("ปรับ")) {
+    response += (
+      "**กำหนดเวลาและบทลงโทษกรณีจดทะเบียนภาษีมูลค่าเพิ่มล่าช้า:**\n" +
+      "ตามประมวลรัษฎากร ผู้มีรายรับเกินเกณฑ์ต้องยื่นคำขอจดทะเบียนภายใน **30 วัน** นับแต่วันที่รายรับเกิน 1.8 ล้านบาท\n" +
+      "**บทลงโทษกรณีเกินกำหนดเวลา:**\n" +
+      "1. **ค่าปรับทางอาญา:** ระวางโทษจำคุกไม่เกิน 1 เดือน หรือปรับไม่เกิน 2,000 บาท หรือทั้งจำทั้งปรับ (ตามมาตรา 90/2)\n" +
+      "2. **เบี้ยปรับ:** ต้องเสียเบี้ยปรับ 2 เท่าของเงินภาษีที่ต้องเสียในแต่ละเดือนภาษี นับตั้งแต่วันที่ต้องยื่นจดทะเบียนจนถึงวันที่จดทะเบียนสำเร็จ (ตามมาตรา 89(1))\n" +
+      "3. **เงินเพิ่ม:** ดอกเบี้ยปรับร้อยละ 1.5 ต่อเดือน ของเงินภาษีที่ต้องชำระ (เศษของเดือนคิดเป็น 1 เดือน)\n\n" +
+      "💡 *คำแนะนำเจ้าหน้าที่:* แนะนำให้ผู้ประกอบการรีบยื่นจดทะเบียนทันทีที่รายได้แตะเกณฑ์ เพื่อลดหย่อนภาระเบี้ยปรับย้อนหลัง"
+    );
+  } else if (normalized.includes("ยื่นที่ไหน") || normalized.includes("ช่องทาง") || normalized.includes("ยื่นยังไง") || normalized.includes("จดที่ไหน") || normalized.includes("เว็บไซต์")) {
+    response += (
+      "**สถานที่และช่องทางการยื่นจดทะเบียนภาษีมูลค่าเพิ่ม:**\n" +
+      "ผู้ประกอบการสามารถเลือกยื่นแบบ ภ.พ.01 ได้ 2 ช่องทางดังนี้:\n" +
+      "1. **ช่องทางออนไลน์ (แนะนำ):** ยื่นผ่านระบบ e-Registration บนเว็บไซต์ของกรมสรรพากร (www.rd.go.th) ได้ตลอด 24 ชั่วโมง โดยจะได้รับการอนุมัติและออกใบทะเบียนภาษีมูลค่าเพิ่ม (ภ.พ.20) รวดเร็วกว่า\n" +
+      "2. **ยื่น ณ สำนักงานสรรพากรพื้นที่:** ยื่นด้วยกระดาษ ณ สำนักงานสรรพากรพื้นที่สาขา ที่สถานประกอบการตั้งอยู่ (กรณีมีสถานประกอบการหลายแห่ง ให้ยื่น ณ สรรพากรพื้นที่ที่สำนักงานใหญ่ตั้งอยู่)\n\n" +
+      "💡 *สิทธิ์สำหรับผู้ประกอบการ:* การยื่นออนไลน์เปิดสิทธิ์ให้ทำรายการได้ทันทีโดยไม่ต้องส่งเอกสารทางกระดาษ เว้นแต่เจ้าหน้าที่จะขอสืบค้นเพิ่มเติม"
+    );
+  } else if (normalized.includes("ยกเลิก") || normalized.includes("ถอนตัว") || normalized.includes("ออก")) {
+    response += (
+      "**การขอยกเลิกจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Cancellation):**\n" +
+      "การยกเลิกใบทะเบียน สามารถแบ่งออกตามลักษณะการจดทะเบียนได้ดังนี้:\n" +
+      "1. **จดทะเบียนโดยบังคับ (รายรับเกิน 1.8 ล้าน):** สามารถขอยกเลิกจดทะเบียน (ยื่นแบบ ภ.พ.08) ได้หากรายรับลดลงต่ำกว่า 1.8 ล้านบาทต่อปี ติดต่อกันเป็นเวลาไม่น้อยกว่า 3 ปีภาษี\n" +
+      "2. **จดทะเบียนโดยสมัครใจ (รายรับไม่ถึง 1.8 ล้าน):** สามารถขอยกเลิกจดทะเบียนได้เมื่อเป็นผู้ประกอบการจดทะเบียนแล้วไม่น้อยกว่า 2 ปีภาษี\n" +
+      "3. **เลิกกิจการหรือโอนกิจการ:** สามารถยื่นแบบ ภ.พ.08 ขอยกเลิกได้ทันทีภายใน 15 วันนับแต่วันเลิกหรือโอนกิจการ\n\n" +
+      "💡 *ข้อควรระวัง:* ระหว่างที่ยังไม่ได้รับการอนุมัติยกเลิก ผู้ประกอบการยังมีหน้าที่ต้องยื่นแบบ ภ.พ.30 ทุกเดือน"
+    );
+  } else {
+    response += (
+      "**ข้อมูลการจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration Info):**\n" +
+      "การจดทะเบียนภาษีมูลค่าเพิ่มเป็นหน้าที่ทางกฎหมายของผู้ประกอบการไทยเมื่อมีรายรับเกินเกณฑ์ 1.8 ล้านบาทต่อปี " +
+      "กรุณาระบุหัวข้อที่เจ้าหน้าที่ต้องการตรวจสอบ เช่น:\n" +
+      "- *'เอกสารที่ต้องใช้'* เพื่อเรียกดูรายการแบบฟอร์ม ภ.พ.01 และหลักฐานที่ตั้งประกอบ\n" +
+      "- *'จดทะเบียนล่าช้า'* เพื่อดูการคำนวณเบี้ยปรับ 2 เท่า และโทษอาญา\n" +
+      "- *'ยื่นจดทะเบียนช่องทางใด'* เพื่อดูรายละเอียดการยื่นผ่านอินเทอร์เน็ตบนหน้าเว็บสรรพากร\n" +
+      "- *'จดทะเบียนซ้ำซ้อน'* เพื่อประเมินประเด็นข้อระเบียบข้อขัดแย้งของสถานที่ตั้งสถานประกอบการ"
+    );
+  }
+
+  if (contextStr) {
+    response += `\n\n---\n🔎 **เอกสารกฎหมายอ้างอิงที่สืบค้นได้จาก Vector Store:**\n${contextStr}`;
+  }
+
+  return response;
+}
+
 export default function Home() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -79,6 +530,10 @@ export default function Home() {
   const [lawsList, setLawsList] = useState<any[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  // --- Client Mock and Fallback States ---
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+  const [localLogs, setLocalLogs] = useState<any[]>([]);
+
   // --- Accessibility Font Size States ---
   // Font scale levels: 0 (Small - 14px), 1 (Normal/Default - 16px), 2 (Large - 18px), 3 (Extra Large - 22px)
   const [fontScale, setFontScale] = useState<number>(1);
@@ -94,6 +549,40 @@ export default function Home() {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // Load local logs from localStorage or Seed Data
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedLogs = localStorage.getItem("vat_chatbot_logs");
+      if (savedLogs) {
+        try {
+          const parsed = JSON.parse(savedLogs);
+          setLocalLogs(parsed);
+        } catch (e) {
+          localStorage.setItem("vat_chatbot_logs", JSON.stringify(SEED_LOGS));
+          setLocalLogs(SEED_LOGS);
+        }
+      } else {
+        localStorage.setItem("vat_chatbot_logs", JSON.stringify(SEED_LOGS));
+        setLocalLogs(SEED_LOGS);
+      }
+    }
+  }, []);
+
+  // Helper to add a log to client side memory
+  const addMockLog = (newLog: any) => {
+    setLocalLogs(prev => {
+      const updated = [newLog, ...prev];
+      if (typeof window !== "undefined") {
+        localStorage.setItem("vat_chatbot_logs", JSON.stringify(updated));
+      }
+      setTimeout(() => {
+        setRecentLogs(updated.slice(0, 15));
+        setStats(calculateMockStats(updated));
+      }, 0);
+      return updated;
+    });
+  };
+
   // Generate unique session ID on mount
   useEffect(() => {
     const randomSess = "sess_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
@@ -106,39 +595,43 @@ export default function Home() {
     try {
       // 1. Fetch Stats summary
       const resStats = await fetch(`${API_BASE_URL}/api/stats`);
-      if (resStats.ok) {
-        const data = await resStats.json();
-        setStats(data);
-      }
-      
+      if (!resStats.ok) throw new Error("Stats fetch failed");
+      const data = await resStats.json();
+      setStats(data);
+
       // 2. Fetch Recent Log list
       const resLogs = await fetch(`${API_BASE_URL}/api/logs?limit=15`);
-      if (resLogs.ok) {
-        const dataLogs = await resLogs.json();
-        setRecentLogs(dataLogs);
-      }
-      
+      if (!resLogs.ok) throw new Error("Logs fetch failed");
+      const dataLogs = await resLogs.json();
+      setRecentLogs(dataLogs);
+
       // 3. Fetch Laws Vector Store index
       const resLaws = await fetch(`${API_BASE_URL}/api/laws`);
-      if (resLaws.ok) {
-        const dataLaws = await resLaws.json();
-        setLawsList(dataLaws);
-      }
+      if (!resLaws.ok) throw new Error("Laws fetch failed");
+      const dataLaws = await resLaws.json();
+      setLawsList(dataLaws);
 
       setErrorMsg(null);
+      setIsDemoMode(false);
     } catch (err) {
-      console.error(err);
-      setErrorMsg("กรุณาเปิดการทำงานของ FastAPI Backend (Port 8000) ก่อนใช้งาน");
+      console.warn("Backend API not reachable. Switching to Local Demo (Mock) Mode...");
+      setIsDemoMode(true);
+      
+      const currentLogs = localLogs.length > 0 ? localLogs : SEED_LOGS;
+      setRecentLogs(currentLogs.slice(0, 15));
+      setStats(calculateMockStats(currentLogs));
+      setLawsList(LAWS_DATABASE);
+      setErrorMsg(null);
     } finally {
       setStatsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === "admin") {
+    if (activeTab === "admin" || isDemoMode) {
       fetchStats();
     }
-  }, [activeTab]);
+  }, [activeTab, localLogs, isDemoMode]);
 
   // --- Accessibility Font Size Styling Mapping ---
   // These mapping configurations determine Tailwind font sizes based on the user's active zoom level.
@@ -184,11 +677,84 @@ export default function Home() {
     setMessages(updatedMessages);
     setIsLoading(true);
 
+    // If already in Demo/Mock Mode, process locally and bypass API fetch
+    if (isDemoMode) {
+      setTimeout(() => {
+        const historyPayload = updatedMessages
+          .slice(1, -1)
+          .map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }));
+
+        if (checkMockOutOfScope(userMessageText)) {
+          const responseText =
+            "ขออภัยครับ ระบบนี้เป็นคลังความรู้สำหรับเจ้าหน้าที่กรมสรรพากรในการสืบค้นข้อมูล " +
+            "เฉพาะเกี่ยวกับการจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration) เท่านั้น " +
+            "คำถามของท่านไม่อยู่ในขอบเขต หรือเกี่ยวกับภาษี/บริการด้านอื่นที่ระบบยังไม่รองรับการให้บริการข้อมูลในขณะนี้";
+
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: responseText,
+            detected_conflict: false
+          }]);
+          setInjectedLaws([]);
+
+          const newLog = {
+            id: Date.now(),
+            session_id: sessionId,
+            original_query: userMessageText,
+            rewritten_query: userMessageText,
+            response: responseText,
+            raw_laws: "[]",
+            is_out_of_scope: 1,
+            detected_conflict: 0,
+            timestamp: new Date().toISOString()
+          };
+          addMockLog(newLog);
+        } else {
+          const rewritten = rewriteMockQuery(userMessageText, historyPayload);
+          const matchedDocs = retrieveMockDocs(rewritten);
+          const conflictWarning = detectMockConflict(rewritten);
+          const hasConflict = conflictWarning !== null;
+
+          const responseText = generateMockResponse(rewritten, matchedDocs, conflictWarning);
+
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: responseText,
+            detected_conflict: hasConflict
+          }]);
+          setInjectedLaws(matchedDocs);
+
+          const rawLawsMapped = matchedDocs.map(doc => ({
+            title: doc.title,
+            content: doc.content,
+            id: doc.id
+          }));
+
+          const newLog = {
+            id: Date.now(),
+            session_id: sessionId,
+            original_query: userMessageText,
+            rewritten_query: rewritten,
+            response: responseText,
+            raw_laws: JSON.stringify(rawLawsMapped),
+            is_out_of_scope: 0,
+            detected_conflict: hasConflict ? 1 : 0,
+            timestamp: new Date().toISOString()
+          };
+          addMockLog(newLog);
+        }
+        setIsLoading(false);
+      }, 600); // Simulate network latency
+      return;
+    }
+
     try {
       // Build request body including context history for Query Re-writing
-      // We filter out greeting message so history contains only real user-assistant pairs
       const historyPayload = updatedMessages
-        .slice(1, -1) // skip the greeting (index 0) and the current prompt (which was just added at the end)
+        .slice(1, -1)
         .map(msg => ({
           role: msg.role,
           content: msg.content
@@ -211,8 +777,8 @@ export default function Home() {
       const data: ChatResponse = await res.json();
 
       // Append backend RAG response
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
+      setMessages(prev => [...prev, {
+        role: "assistant",
         content: data.response,
         detected_conflict: data.detected_conflict
       }]);
@@ -221,15 +787,80 @@ export default function Home() {
       if (data.raw_laws && data.raw_laws.length > 0) {
         setInjectedLaws(data.raw_laws);
       } else if (data.is_out_of_scope) {
-        // Keep existing laws or clear if out of scope
         setInjectedLaws([]);
       }
 
     } catch (err) {
-      console.error(err);
-      setErrorMsg("ไม่สามารถส่งข้อมูลไปยัง RAG Backend ได้ กรุณาตรวจสอบการรันเซิร์ฟเวอร์");
-      // Remove the last user message as it failed to process
-      setMessages(prev => prev.slice(0, -1));
+      console.warn("Backend unavailable. Falling back to local RAG processing...");
+      setIsDemoMode(true);
+      
+      // Process this query locally
+      const historyPayload = updatedMessages
+        .slice(1, -1)
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
+      if (checkMockOutOfScope(userMessageText)) {
+        const responseText =
+          "ขออภัยครับ ระบบนี้เป็นคลังความรู้สำหรับเจ้าหน้าที่กรมสรรพากรในการสืบค้นข้อมูล " +
+          "เฉพาะเกี่ยวกับการจดทะเบียนภาษีมูลค่าเพิ่ม (VAT Registration) เท่านั้น " +
+          "คำถามของท่านไม่อยู่ในขอบเขต หรือเกี่ยวกับภาษี/บริการด้านอื่นที่ระบบยังไม่รองรับการให้บริการข้อมูลในขณะนี้";
+
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: responseText,
+          detected_conflict: false
+        }]);
+        setInjectedLaws([]);
+
+        const newLog = {
+          id: Date.now(),
+          session_id: sessionId,
+          original_query: userMessageText,
+          rewritten_query: userMessageText,
+          response: responseText,
+          raw_laws: "[]",
+          is_out_of_scope: 1,
+          detected_conflict: 0,
+          timestamp: new Date().toISOString()
+        };
+        addMockLog(newLog);
+      } else {
+        const rewritten = rewriteMockQuery(userMessageText, historyPayload);
+        const matchedDocs = retrieveMockDocs(rewritten);
+        const conflictWarning = detectMockConflict(rewritten);
+        const hasConflict = conflictWarning !== null;
+
+        const responseText = generateMockResponse(rewritten, matchedDocs, conflictWarning);
+
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: responseText,
+          detected_conflict: hasConflict
+        }]);
+        setInjectedLaws(matchedDocs);
+
+        const rawLawsMapped = matchedDocs.map(doc => ({
+          title: doc.title,
+          content: doc.content,
+          id: doc.id
+        }));
+
+        const newLog = {
+          id: Date.now(),
+          session_id: sessionId,
+          original_query: userMessageText,
+          rewritten_query: rewritten,
+          response: responseText,
+          raw_laws: JSON.stringify(rawLawsMapped),
+          is_out_of_scope: 0,
+          detected_conflict: hasConflict ? 1 : 0,
+          timestamp: new Date().toISOString()
+        };
+        addMockLog(newLog);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -238,10 +869,12 @@ export default function Home() {
   // Reset Session History
   const handleClearSession = async () => {
     if (isLoading) return;
-    try {
-      await fetch(`${API_BASE_URL}/api/clear`, { method: "POST" });
-    } catch (err) {
-      console.error("Failed to clear backend logs:", err);
+    if (!isDemoMode) {
+      try {
+        await fetch(`${API_BASE_URL}/api/clear`, { method: "POST" });
+      } catch (err) {
+        console.error("Failed to clear backend logs:", err);
+      }
     }
     const randomSess = "sess_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
     setSessionId(randomSess);
@@ -257,15 +890,25 @@ export default function Home() {
 
   // Reset all SQLite logs (Demo feature)
   const handleResetDatabaseLogs = async () => {
-    if (confirm("คุณต้องการล้างข้อมูลประวัติและสถิติทั้งหมดในระบบหลังบ้านใช่หรือไม่?")) {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/clear`, { method: "POST" });
-        if (res.ok) {
-          fetchStats();
-          alert("ล้างฐานข้อมูลประวัติเรียบร้อยแล้ว (ระบบทำการเริ่มข้อมูลเริ่มต้นให้ใหม่)");
+    if (confirm("คุณต้องการล้างข้อมูลประวัติและสถิติทั้งหมดในระบบใช่หรือไม่?")) {
+      if (isDemoMode) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("vat_chatbot_logs", JSON.stringify([]));
         }
-      } catch (err) {
-        alert("ไม่สามารถรีเซ็ตฐานข้อมูลได้");
+        setLocalLogs([]);
+        setRecentLogs([]);
+        setStats(calculateMockStats([]));
+        alert("ล้างฐานข้อมูลประวัติโหมดเดโมเรียบร้อยแล้ว");
+      } else {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/clear`, { method: "POST" });
+          if (res.ok) {
+            fetchStats();
+            alert("ล้างฐานข้อมูลประวัติเรียบร้อยแล้ว (ระบบทำการเริ่มข้อมูลเริ่มต้นให้ใหม่)");
+          }
+        } catch (err) {
+          alert("ไม่สามารถรีเซ็ตฐานข้อมูลได้");
+        }
       }
     }
   };
@@ -293,8 +936,19 @@ export default function Home() {
               </span>
               <span className="text-[10px] text-gray-300 tracking-wider">ON-PREMISE AI SYSTEM</span>
             </div>
-            <h1 className="text-base md:text-lg font-bold leading-tight">
-              ระบบสืบค้นข้อกฎหมายการจดทะเบียนภาษีมูลค่าเพิ่ม (VAT RAG)
+            <h1 className="text-base md:text-lg font-bold leading-tight flex items-center flex-wrap gap-2">
+              <span>ระบบสืบค้นข้อกฎหมายการจดทะเบียนภาษีมูลค่าเพิ่ม (VAT RAG)</span>
+              {isDemoMode ? (
+                <span className="bg-amber-500/20 text-gov-gold border border-gov-gold/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-inner animate-pulse flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 bg-gov-gold rounded-full"></span>
+                  <span>โหมดเดโม (Mock Mode)</span>
+                </span>
+              ) : (
+                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-inner flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+                  <span>โหมดออนไลน์ (Active)</span>
+                </span>
+              )}
             </h1>
           </div>
         </div>
