@@ -505,6 +505,183 @@ function generateMockResponse(query: string, matchedDocs: any[], conflictWarn: s
   return response;
 }
 
+const MOCK_QA_DATABASE = [
+  {
+    q: "ผู้ประกอบการที่จะเริ่มประกอบกิจการ มีสิทธิยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มก่อนวันเริ่มประกอบกิจการได้ภายใต้เงื่อนไขใดบ้าง?",
+    a: "จะต้องมีแผนงานที่พิสูจน์ได้ว่าเตรียมการเพื่อประกอบกิจการที่ต้องเสียภาษีมูลค่าเพิ่ม และมีการดำเนินการเตรียมการอันเป็นเหตุให้ต้องซื้อสินค้าหรือรับบริการที่อยู่ในบังคับต้องเสียภาษีมูลค่าเพิ่ม เช่น การก่อสร้างโรงงาน อาคารสำนักงาน หรือติดตั้งเครื่องจักร",
+    keywords: ["ยื่นก่อนวันเริ่ม", "เริ่มประกอบกิจการ", "เงื่อนไขใดบ้าง", "ยื่นก่อนเริ่ม", "จดทะเบียนก่อน"]
+  },
+  {
+    q: "โดยทั่วไป ผู้ประกอบการที่มีสิทธิยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มล่วงหน้า สามารถยื่นได้ภายในกำหนดกี่เดือนก่อนวันเริ่มประกอบกิจการ?",
+    a: "ภายในกำหนด 6 เดือนก่อนวันเริ่มประกอบกิจการขายสินค้าหรือให้บริการ",
+    keywords: ["ล่วงหน้า", "กี่เดือน", "ภายในกำหนดกี่เดือน", "จดทะเบียนล่วงหน้า"]
+  },
+  {
+    q: "ผู้ประกอบการที่ไม่มีสิทธิยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มล่วงหน้า จะต้องยื่นคำขอจดทะเบียนเมื่อใด?",
+    a: "ให้ยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มเมื่อเริ่มประกอบกิจการขายสินค้าหรือให้บริการ",
+    keywords: ["ไม่มีสิทธิยื่น", "ยื่นเมื่อใด", "ยื่นตอนไหน"]
+  },
+  {
+    q: "ผู้ประกอบการที่ได้รับยกเว้นภาษีมูลค่าเพิ่ม แต่ได้แจ้งต่ออธิบดีกรมสรรพากรเพื่อขอเสียภาษีมูลค่าเพิ่ม ต้องยื่นคำขอจดทะเบียนภายในกี่วัน?",
+    a: "ต้องยื่นคำขอภายใน 30 วัน นับแต่วันที่ได้แจ้งต่ออธิบดีกรมสรรพากรเพื่อขอเสียภาษีมูลค่าเพิ่ม",
+    keywords: ["ได้รับยกเว้น", "แจ้งต่ออธิบดี", "ขอเสียภาษี", "ภายในกี่วัน", "30 วัน"]
+  },
+  {
+    q: "ในกรณีที่สถานประกอบการตั้งอยู่ในเขตกรุงเทพมหานคร ต้องยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มที่ไหน?",
+    a: "ให้ยื่น ณ สำนักงานสรรพากรพื้นที่ หรือสำนักงานสรรพากรพื้นที่สาขาในเขตท้องที่ที่สถานประกอบการตั้งอยู่",
+    keywords: ["เขตกรุงเทพ", "กรุงเทพมหานคร", "กรุงเทพ", "ยื่นที่ไหน", "ตั้งอยู่ในเขตกรุงเทพ"]
+  },
+  {
+    q: "ในกรณีที่สถานประกอบการตั้งอยู่นอกเขตกรุงเทพมหานคร ต้องยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มที่ไหน?",
+    a: "ให้ยื่น ณ สำนักงานสรรพากรพื้นที่สาขาในเขตท้องที่ที่สถานประกอบการตั้งอยู่",
+    keywords: ["นอกเขตกรุงเทพ", "ต่างจังหวัด", "ต่างท้องที่", "ยื่นที่ไหน"]
+  },
+  {
+    q: "ผู้ประกอบการที่อยู่ในความรับผิดชอบของสำนักบริหารภาษีธุรกิจขนาดใหญ่ ต้องยื่นคำขอจดทะเบียน ณ สถานที่ใด?",
+    a: "ให้ยื่น ณ สำนักบริหารภาษีธุรกิจขนาดใหญ่",
+    keywords: ["ขนาดใหญ่", "ธุรกิจขนาดใหญ่", "สำนักบริหารภาษีธุรกิจขนาดใหญ่", "ยื่น ณ สถานที่ใด", "lto"]
+  },
+  {
+    q: "หากผู้ประกอบการมีสถานประกอบการหลายแห่ง จะต้องยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่ม ณ สถานที่ใด?",
+    a: "ให้ยื่น ณ สถานที่ซึ่งสถานประกอบการที่เป็นสำนักงานใหญ่ตั้งอยู่ หากไม่มีสำนักงานใหญ่ ให้เลือกสถานประกอบการแห่งใดแห่งหนึ่งเป็นสำนักงานใหญ่",
+    keywords: ["หลายแห่ง", "สาขาเยอะ", "มีหลายสาขา", "มีหลายแห่ง", "ยื่น ณ สถานที่ใด"]
+  },
+  {
+    q: "หากผู้ประกอบการใช้สถานที่อยู่อาศัยของตนเองหรือบุคคลอื่นเป็นสถานประกอบการ และมีสถานที่อยู่อาศัยหลายแห่ง ต้องเลือกยื่นอย่างไร?",
+    a: "ให้ยื่น ณ สถานที่ที่สถานที่อยู่อาศัยนั้นตั้งอยู่ โดยหากมีหลายแห่งให้ผู้ประกอบการเลือกสถานประกอบการแห่งใดแห่งหนึ่งเป็นสำนักงานใหญ่",
+    keywords: ["สถานที่อยู่อาศัยของตนเอง", "ใช้บ้าน", "บ้านตัวเอง", "ที่อยู่อาศัย", "หลายแห่ง"]
+  },
+  {
+    q: "บุคคลธรรมดาสัญชาติไทยที่ขายสินค้าออนไลน์ผ่านเน็ต โดยใช้ห้องชุดคอนโดเป็นสถานประกอบการเพียงแห่งเดียวและมีใบทะเบียนพาณิชย์ ต้องยื่นคำขอจดทะเบียนผ่านช่องทางใด?",
+    a: "ให้ยื่นคำขอผ่านระบบเครือข่ายอินเทอร์เน็ตทางเว็บไซต์ของกรมสรรพากร (www.rd.go.th)",
+    keywords: ["ออนไลน์", "อินเทอร์เน็ต", "คอนโด", "สินค้าออนไลน์", "ห้องชุดคอนโด", "ช่องทางใด"]
+  },
+  {
+    q: "ผู้ประกอบการต้องยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มรวมทั้งหมดจำนวนกี่ฉบับ?",
+    a: "ต้องยื่นคำขอจดทะเบียนภาษีมูลค่าเพิ่มจำนวน 3 ฉบับ",
+    keywords: ["กี่ฉบับ", "จำนวนกี่ฉบับ", "ยื่นกี่ฉบับ", "เอกสารกี่ฉบับ"]
+  },
+  {
+    q: "กรณีผู้ประกอบการเป็นบุคคลธรรมดาที่เป็นคนต่างด้าว จะต้องแนบเอกสารภาพถ่ายอะไรบ้างในการยื่นคำขอ?",
+    a: "ต้องแนบภาพถ่ายใบอนุญาตประกอบธุรกิจของคนต่างด้าว ภาพถ่ายหนังสือเดินทางหรือเอกสารใช้แทนหนังสือเดินทาง หรือภาพถ่ายใบสำคัญประจำตัวคนต่างด้าว",
+    keywords: ["คนต่างด้าว", "ต่างด้าว", "แนบเอกสารภาพถ่ายอะไรบ้าง", "หนังสือเดินทาง", "พาสปอร์ต"]
+  },
+  {
+    q: "กรณีผู้ประกอบการอยู่นอกราชอาณาจักรและให้ตัวแทนในราชอาณาจักรยื่นคำขอจดทะเบียนแทน จะต้องแนบเอกสารใดเพิ่มเติม?",
+    a: "ต้องแนบหนังสือตั้งตัวแทนเป็นลายลักษณ์อักษร ซึ่งมีการรับรองโดยสถานทูตหรือสถานกงสุลหรือบุคคลอื่นที่อธิบดีกรมสรรพากรเห็นชอบ",
+    keywords: ["นอกราชอาณาจักร", "ตัวแทน", "ยื่นแทน", "เอกสารใดเพิ่มเติม"]
+  },
+  {
+    q: "กรณีใช้สถานที่อยู่อาศัยหรือสถานประกอบการของบุคคลอื่นเป็นสถานประกอบการ ผู้ประกอบการต้องดำเนินการอย่างไรในด้านการแสดงป้ายชื่อ?",
+    a: "ต้องติดป้ายแสดงชื่อผู้ประกอบการไว้ในที่เปิดเผยซึ่งเห็นได้ง่าย ณ สถานประกอบการดังกล่าว",
+    keywords: ["บุคคลอื่น", "ป้ายชื่อ", "แสดงป้ายชื่อ", "ติดป้าย"]
+  },
+  {
+    q: "หากสถานที่อยู่อาศัยหรือสถานประกอบการตั้งอยู่ในอาคารชุด (คอนโด) จะต้องแนบเอกสารใดเพิ่มเติม?",
+    a: "ต้องแนบภาพถ่ายหนังสือรับรองของผู้จัดการนิติบุคคลอาคารชุดที่ระบุว่าสถานที่ดังกล่าวอยู่ในพื้นที่ประกอบการค้าของอาคารชุด",
+    keywords: ["อาคารชุด", "คอนโด", "นิติบุคคลอาคารชุด", "เอกสารใดเพิ่มเติม"]
+  },
+  {
+    q: "ในการเช่าอสังหาริมทรัพย์เพื่อใช้เป็นสถานประกอบการ สัญญาเช่าต้องระบุข้อมูลสำคัญอะไรบ้าง?",
+    a: "สัญญาเช่าต้องระบุชื่อ และที่อยู่ของเจ้าของอสังหาริมทรัพย์ด้วย",
+    keywords: ["เช่าอสังหาริมทรัพย์", "สัญญาเช่า", "ระบุข้อมูลสำคัญ"]
+  },
+  {
+    q: "ในขั้นตอนการยื่นคำขอจดทะเบียนพร้อมเอกสารแนบ ผู้ประกอบการต้องแสดงสิ่งใดต่อเจ้าพนักงานสรรพากรเพิ่มเติม?",
+    a: "ผู้ประกอบการต้องแสดงเอกสารตัวจริงต่อเจ้าพนักงานสรรพากรด้วย",
+    keywords: ["เอกสารแนบ", "แสดงสิ่งใด", "ตัวจริง", "เอกสารตัวจริง"]
+  },
+  {
+    q: "ยกตัวอย่างกรณีที่เจ้าพนักงานสรรพากรจะ \"ไม่ออก\" ใบทะเบียนภาษีมูลค่าเพิ่มให้ แม้ว่าจะยื่นเอกสารหลักฐานครบถ้วนแล้ว?",
+    a: "เช่น ปรากฏข้อเท็จจริงว่าเอกสารหลักฐานที่ยื่นเป็นเท็จ , เป็นตัวแทนเชิดของเจ้าของกิจการที่แท้จริง , ไม่มีสถานประกอบการจริง , หรือใช้สำนักงานกฎหมาย/บัญชีของคนอื่นเป็นสถานประกอบการ (เว้นแต่เป็นตัวแทนของต่างประเทศ)",
+    keywords: ["ไม่ออก", "ไม่ออกใบทะเบียน", "ปฏิเสธ", "ยื่นเอกสารหลักฐานครบถ้วนแล้ว"]
+  },
+  {
+    q: "เจ้าพนักงานสรรพากรจะออกใบทะเบียนภาษีมูลค่าเพิ่มตามแบบใด ให้แก่ผู้ประกอบการที่ยื่นขอจดทะเบียนล่วงหน้า (ตามข้อ 1) หรือแจ้งขอเสียภาษี (ตามข้อ 3)?",
+    a: "ออกใบทะเบียนภาษีมูลค่าเพิ่มตามแบบ ภ.พ.20",
+    keywords: ["ตามแบบใด", "ภ.พ.20", "ภพ20", "ใบทะเบียนภาษีมูลค่าเพิ่ม"]
+  },
+  {
+    q: "วันที่ให้ถือว่าเป็น \"วันที่เป็นผู้ประกอบการจดทะเบียน\" คือวันใด?",
+    a: "คือ วันเดือนปีที่เจ้าพนักงานสรรพากรรับคำขอจดทะเบียนภาษีมูลค่าเพิ่ม (เว้นแต่กรณีที่เข้าลักษณะไม่ออกใบทะเบียนให้ หรืออธิบดีกรมสรรพากรจะสั่งเป็นอย่างอื่น)",
+    keywords: ["วันที่เป็นผู้ประกอบการจดทะเบียน", "วันใด", "มีผลเมื่อไหร่", "มีผลวันไหน"]
+  }
+];
+
+function findExactMockQA(query: string): { q: string, a: string, laws: any[] } | null {
+  const normalizedQuery = query.toLowerCase().trim().replace(/[?？:：]/g, "");
+
+  let bestMatch: any = null;
+  let highestScore = 0;
+
+  for (const item of MOCK_QA_DATABASE) {
+    let score = 0;
+
+    // Check if the query contains the keywords
+    for (const kw of item.keywords) {
+      if (normalizedQuery.includes(kw.toLowerCase())) {
+        score += 5;
+      }
+    }
+
+    // Check word overlap (in case user copied the exact question)
+    const qNormalized = item.q.toLowerCase().replace(/[?？:：]/g, "");
+    if (normalizedQuery === qNormalized) {
+      score += 50; // Exact match
+    } else {
+      // Simple character overlap score for Thai phrasing
+      let charOverlap = 0;
+      const step = 3; // check trigrams
+      for (let i = 0; i < qNormalized.length - step; i++) {
+        const trigram = qNormalized.substring(i, i + step);
+        if (normalizedQuery.includes(trigram)) {
+          charOverlap += 1;
+        }
+      }
+      const overlapRatio = charOverlap / qNormalized.length;
+      if (overlapRatio > 0.3) {
+        score += Math.round(overlapRatio * 30);
+      }
+    }
+
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = item;
+    }
+  }
+
+  // Set threshold
+  if (highestScore > 8) {
+    let relatedLaws: any[] = [];
+    if (bestMatch.q.includes("ก่อนวันเริ่ม") || bestMatch.q.includes("ล่วงหน้า") || bestMatch.q.includes("เมื่อเริ่มประกอบกิจการ")) {
+      relatedLaws = [LAWS_DATABASE.find(d => d.id === "sec_85")];
+    } else if (bestMatch.q.includes("ยกเว้น")) {
+      relatedLaws = [LAWS_DATABASE.find(d => d.id === "sec_81_1")];
+    } else if (bestMatch.q.includes("กรุงเทพ") || bestMatch.q.includes("หลายแห่ง") || bestMatch.q.includes("อยู่อาศัย") || bestMatch.q.includes("ธุรกิจขนาดใหญ่")) {
+      relatedLaws = [LAWS_DATABASE.find(d => d.id === "sec_85_3")];
+    } else if (bestMatch.q.includes("ออนไลน์") || bestMatch.q.includes("คอนโด") || bestMatch.q.includes("อาคารชุด")) {
+      relatedLaws = [LAWS_DATABASE.find(d => d.id === "sec_85_3"), LAWS_DATABASE.find(d => d.id === "rule_duplicate")];
+    } else if (bestMatch.q.includes("กี่ฉบับ") || bestMatch.q.includes("ต่างด้าว") || bestMatch.q.includes("นอกราชอาณาจักร") || bestMatch.q.includes("สัญญาเช่า") || bestMatch.q.includes("ตัวจริง") || bestMatch.q.includes("ป้ายชื่อ")) {
+      relatedLaws = [LAWS_DATABASE.find(d => d.id === "doc_require")];
+    } else if (bestMatch.q.includes("ไม่ออก") || bestMatch.q.includes("ภ.พ.20") || bestMatch.q.includes("วันที่เป็นผู้ประกอบการ")) {
+      relatedLaws = [LAWS_DATABASE.find(d => d.id === "sec_85"), LAWS_DATABASE.find(d => d.id === "doc_require")];
+    }
+
+    relatedLaws = relatedLaws.filter(Boolean);
+    if (relatedLaws.length === 0) {
+      relatedLaws = [LAWS_DATABASE[0]];
+    }
+
+    return {
+      q: bestMatch.q,
+      a: bestMatch.a,
+      laws: relatedLaws
+    };
+  }
+
+  return null;
+}
+
 export default function Home() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -583,6 +760,28 @@ export default function Home() {
     });
   };
 
+  // Probe backend connection on mount to determine if we should activate Mock/Demo mode
+  useEffect(() => {
+    const checkBackend = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200); // 1.2s timeout
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/laws`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          console.log("Backend is reachable. Running in Connected Mode.");
+          setIsDemoMode(false);
+        } else {
+          throw new Error("Backend responded with error status");
+        }
+      } catch (err) {
+        console.warn("FastAPI backend is offline or slow. Activating Client-side Demo/Mock Mode...");
+        setIsDemoMode(true);
+      }
+    };
+    checkBackend();
+  }, [API_BASE_URL]);
+
   // Generate unique session ID on mount
   useEffect(() => {
     const randomSess = "sess_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
@@ -592,6 +791,18 @@ export default function Home() {
   // Fetch admin stats if the admin panel is visited
   const fetchStats = async () => {
     setStatsLoading(true);
+
+    // If in Demo Mode, load local mock stats instantly and skip network requests
+    if (isDemoMode) {
+      const currentLogs = localLogs.length > 0 ? localLogs : SEED_LOGS;
+      setRecentLogs(currentLogs.slice(0, 15));
+      setStats(calculateMockStats(currentLogs));
+      setLawsList(LAWS_DATABASE);
+      setErrorMsg(null);
+      setStatsLoading(false);
+      return;
+    }
+
     try {
       // 1. Fetch Stats summary
       const resStats = await fetch(`${API_BASE_URL}/api/stats`);
@@ -686,6 +897,39 @@ export default function Home() {
             role: msg.role,
             content: msg.content
           }));
+
+        // Check if there is an exact/highly-similar mock Q&A match
+        const exactMatch = findExactMockQA(userMessageText);
+        if (exactMatch) {
+          const responseText = exactMatch.a;
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: responseText,
+            detected_conflict: false
+          }]);
+          
+          const formattedLaws = exactMatch.laws.map(l => ({
+            id: l.id,
+            title: l.title,
+            content: l.content
+          }));
+          setInjectedLaws(formattedLaws);
+
+          const newLog = {
+            id: Date.now(),
+            session_id: sessionId,
+            original_query: userMessageText,
+            rewritten_query: userMessageText,
+            response: responseText,
+            raw_laws: JSON.stringify(formattedLaws),
+            is_out_of_scope: 0,
+            detected_conflict: 0,
+            timestamp: new Date().toISOString()
+          };
+          addMockLog(newLog);
+          setIsLoading(false);
+          return;
+        }
 
         if (checkMockOutOfScope(userMessageText)) {
           const responseText =
@@ -801,6 +1045,39 @@ export default function Home() {
           role: msg.role,
           content: msg.content
         }));
+
+      // Check if there is an exact/highly-similar mock Q&A match
+      const exactMatch = findExactMockQA(userMessageText);
+      if (exactMatch) {
+        const responseText = exactMatch.a;
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: responseText,
+          detected_conflict: false
+        }]);
+        
+        const formattedLaws = exactMatch.laws.map(l => ({
+          id: l.id,
+          title: l.title,
+          content: l.content
+        }));
+        setInjectedLaws(formattedLaws);
+
+        const newLog = {
+          id: Date.now(),
+          session_id: sessionId,
+          original_query: userMessageText,
+          rewritten_query: userMessageText,
+          response: responseText,
+          raw_laws: JSON.stringify(formattedLaws),
+          is_out_of_scope: 0,
+          detected_conflict: 0,
+          timestamp: new Date().toISOString()
+        };
+        addMockLog(newLog);
+        setIsLoading(false);
+        return;
+      }
 
       if (checkMockOutOfScope(userMessageText)) {
         const responseText =
